@@ -1,0 +1,41 @@
+# Environment variables - VERY IMPORTANT!
+.env
+.qodo
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment folders (Common names)
+venv/
+env/
+.venv/
+*/venv/
+*/env/
+*/.venv/
+
+# IDE/Editor specific folders
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw? # Vim swap files
+
+# Log files (if you create any)
+*.log
+logs/
+
+# OS generated files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Dependency folders (if you install locally without venv - not recommended)
+# build/
+# dist/
+# *.egg-info/
+
+# Other temporary/sensitive files
+# (Add anything else specific to your setup)

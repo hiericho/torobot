@@ -1,0 +1,9 @@
+discord.py>=2.0.0
+python-dotenv
+pandas
+numpy
+pytz
+nba-api
+requests # <-- Add this
+beautifulsoup4 # <-- Add this
+atohttp # <-- Add this
