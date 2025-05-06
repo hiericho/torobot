@@ -13,6 +13,7 @@ FUZZY_MATCH_THRESHOLD = 80 # Minimum score (0-100) for fuzzy name matching
 PLAYER_HEADSHOT_URL = "https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png"
 TEAM_LOGO_URL = "https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg" # SVG example
 TEAM_LOGO_URL_ESPN = "https://a.espncdn.com/i/teamlogos/nba/500/{team_abbr_lower}.png" # ESPN example
+ESPN_NBA_SCOREBOARD_URL = "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 
 # --- Prediction Defaults ---
 DEFAULT_AVG_PPG = 112.0 # Default PPG if API fails or season hasn't started
