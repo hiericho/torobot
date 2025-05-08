@@ -10,8 +10,8 @@ NBA_API_TIMEOUT = 20 # Default timeout for NBA API calls in seconds (adjusted fr
 FUZZY_MATCH_THRESHOLD = 80 # Minimum score (0-100) for fuzzy name matching
 
 # --- URLs ---
-PLAYER_HEADSHOT_URL = "https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png"
-TEAM_LOGO_URL = "https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg" # SVG example
+PLAYER_HEADSHOT_URL_TEMPLATE = "https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png"
+TEAM_LOGO_URL_TEMPLATE = "https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg"
 TEAM_LOGO_URL_ESPN = "https://a.espncdn.com/i/teamlogos/nba/500/{team_abbr_lower}.png" # ESPN example
 ESPN_NBA_SCOREBOARD_URL = "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 
@@ -87,7 +87,33 @@ ALL_PLAYER_STATS_REQUESTED = list(set(PLAYER_BASIC_STATS + PLAYER_ADVANCED_STATS
 TEAM_BASIC_STATS = ['W', 'L', 'W_PCT','PTS', 'REB', 'AST','FG_PCT', 'FG3_PCT', "FT_PCT",'OREB', 'DREB', 'STL', 'BLK', 'TOV','PF', 'PLUS_MINUS', 'EFF','GP', 'MIN','CONF_RANK', 'DIV_RANK']
 TEAM_ADVANCED_STATS = ["PFD","OFF_RATING","DEF_RATING","NET_RATING","AST_RATIO","AST_TOV","OREB_PCT","DREB_PCT","REB_PCT","TM_TOV_PCT","EFG_PCT","TS_PCT","EFF"]
 ALL_TEAM_STATS_REQUESTED = list(set(TEAM_BASIC_STATS + TEAM_ADVANCED_STATS))
+# helpers/constants.py
+# ... other constants ...
 
+STAT_DISPLAY_NAMES = {
+    'PTS': 'Points', 'REB': 'Rebounds', 'AST': 'Assists', # ... and so on for ALL stat keys you use
+    'FG_PCT': 'FG%', 'FG3_PCT': '3P%', 'FT_PCT': 'FT%',
+    'OFF_RATING': 'Off. Rating', 'DEF_RATING': 'Def. Rating', 'NET_RATING': 'Net Rating',
+    'TS_PCT': 'TS%', 'EFG_PCT': 'eFG%', 'USG_PCT': 'USG%', 'PACE': 'Pace',
+    # ... add all player and team stat keys you fetch from nba-api
+}
+
+PERCENTAGE_STATS = [
+    'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'USG_PCT', 'WIN_PCT', 'REB_PCT'
+    # Add any other stat keys that represent percentages and need '*' 100 and '%'
+]
+
+# --- For Team Embeds ---
+TEAM_BASIC_STATS_PRIORITY = ['PTS', 'REB', 'AST', 'FG_PCT', 'FG3_PCT', 'PLUS_MINUS'] # Example
+TEAM_ADVANCED_STATS_PRIORITY = ['OFF_RATING', 'DEF_RATING', 'NET_RATING', 'TS_PCT', 'PACE'] # Example
+TEAM_BASIC_STATS_OTHER = ['STL', 'BLK', 'TOV', 'FT_PCT', 'W', 'L'] # Example
+TEAM_ADVANCED_STATS_OTHER = ['EFG_PCT', 'PIE'] # Example
+
+# --- For Player Embeds ---
+PLAYER_BASIC_STATS_PRIORITY = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT'] # Example
+PLAYER_ADVANCED_STATS_PRIORITY = ['TS_PCT', 'USG_PCT', 'NET_RATING', 'PIE'] # Example PER might be from B-Ref
+PLAYER_BASIC_STATS_OTHER = ['TOV', 'FT_PCT', 'MIN', 'GP', 'PLUS_MINUS'] # Example
+PLAYER_ADVANCED_STATS_OTHER = ['EFG_PCT', 'PACE', 'OFF_RATING', 'DEF_RATING'] # Example
 # --- Stat Display Names (Optional - can be expanded) ---
 # This dictionary allows you to map internal stat keys to user-friendly names/emojis
 STAT_DISPLAY_NAMES = {

@@ -19,7 +19,6 @@ class CompareTeams(commands.Cog):
         self.bot = bot
         self.nba_data = bot.nba_data
         self.config = bot.config
-        self.helpers = bot.helpers
 
     # --- Helper to fetch stats ---
     async def _fetch_team_season_stats(self, team_id: int, season: str) -> dict:

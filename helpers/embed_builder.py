@@ -24,6 +24,7 @@ from .constants import (
 
 logger = logging.getLogger(__name__)
 
+
 # --- Stat Formatting Utility ---
 def format_stat_value(stat_key: str, value: Any, is_percentage_stat: bool = False) -> str:
     """
@@ -320,7 +321,7 @@ def format_player_profile_embed(
 
 # --- Standings Embed (Example: a more compact, less table-like version if preferred) ---
 # (The fixed-width table version you had is also good, just offering an alternative)
-def format_standings_compact_embed(standings_data: Optional[Dict[str, pd.DataFrame]]) -> discord.Embed:
+def format_standings_embed(standings_data: Optional[Dict[str, pd.DataFrame]]) -> discord.Embed:
     if not standings_data or not isinstance(standings_data, dict):
         return error_embed("Standings Error", "Could not retrieve or process standings data.")
 

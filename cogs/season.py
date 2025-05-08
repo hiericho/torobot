@@ -1,14 +1,14 @@
 from discord import app_commands, Interaction
 from discord.ext import commands
 import logging
-
+from helpers.nba_helper import get_season_standings
 # Assuming NBAStatsBot is your custom bot class defined elsewhere
 # If not, and you're just using commands.Bot, that's fine too.
 # from ..bot import NBAStatsBot # Example if bot.py is one level up
 
 # Correct import paths for your helper modules
 from helpers.nba_helper import get_season_standings
-from helpers.embed_builder import format_season_standings_embed, error_embed
+from helpers.embed_builder import error_embed, format_standings_embed
 
 logger = logging.getLogger(__name__)
 from typing import TYPE_CHECKING
@@ -44,7 +44,7 @@ class SeasonStandings(commands.Cog):
                 return
 
             # format_season_standings_embed should ideally handle cases where standings_data might be malformed
-            embed = format_season_standings_embed(standings_data)
+            embed = format_standings_embed(standings_data)
             if embed is None: # If embed builder itself can return None on error
                 logger.error("format_season_standings_embed returned None. This indicates an issue with embed generation.")
                 await interaction.followup.send(embed=error_embed(

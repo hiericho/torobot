@@ -75,8 +75,8 @@ class NBAStatsBot(commands.Bot):
             "WEIGHT_PREVIOUS": 0.30,
             "DEFAULT_AVG_PPG": 112.0,
             "NBA_LOGO_URL": "https://cdn.nba.com/logos/nba/nba-logoman-75-word_white.svg",
-            "PLAYER_HEADSHOT_URL_TEMPLATE": "https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png", # Renamed from your helper
-            "TEAM_LOGO_URL_TEMPLATE": "https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg", # Renamed
+            "PLAYER_HEADSHOT_URL_TEMPLATE": "https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png",
+            "TEAM_LOGO_URL_TEMPLATE": "https://cdn.nba.com/logos/nba/{team_id}/primary/L/logo.svg",
             "DEFAULT_STREAMING_URL": "https://www.twitch.tv/nba",
             "API_DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%SZ",
             "API_TIMEOUT_SECONDS": 20,
@@ -287,7 +287,7 @@ class NBAStatsBot(commands.Bot):
             return
         cog_files_to_load = [ # Explicit list is safer
             'general.py', 'schedule.py', 'team_stats.py',
-            'player_stats.py', 'injuries.py', 'compare_teams.py', 'season.py'
+            'player_stats.py', 'injuries.py', 'compare_teams.py', 'season.py', 'ml_cog.py'
         ]
         loaded_cogs_count = 0
         for filename in cog_files_to_load:

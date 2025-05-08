@@ -343,7 +343,7 @@ async def fetch_scoreboard_v2_data() -> Tuple[Optional[Dict[str, pd.DataFrame]],
         return None, "API error fetching today's scoreboard."
 
 
-async def fetch_league_standings_v3(season: str, season_type: str = 'Regular Season') -> Tuple[Optional[Dict[str, pd.DataFrame]], Optional[str]]:
+async def get_season_standings(season: str, season_type: str = 'Regular Season') -> Tuple[Optional[Dict[str, pd.DataFrame]], Optional[str]]:
     """
     Fetches season standings using LeagueStandingsV3.
     Returns {'East': east_df, 'West': west_df}, or (None, error_message).
