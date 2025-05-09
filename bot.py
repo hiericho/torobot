@@ -287,7 +287,9 @@ class NBAStatsBot(commands.Bot):
             return
         cog_files_to_load = [ # Explicit list is safer
             'general.py', 'schedule.py', 'team_stats.py',
-            'player_stats.py', 'injuries.py', 'compare_teams.py', 'season.py', 'ml_cog.py'
+            'player_stats.py', 'injuries.py', 'compare_teams.py', 
+            'season.py', 'ml_cog.py', 'type_season.py',
+            'ping.py'
         ]
         loaded_cogs_count = 0
         for filename in cog_files_to_load:
