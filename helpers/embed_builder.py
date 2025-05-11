@@ -76,9 +76,10 @@ def create_embed(
 def success_embed(title: str, description: str = "") -> discord.Embed:
     return create_embed(f"{EMOJI_CHECK} {title}", description, color=EMBED_COLOR_SUCCESS, timestamp=True)
 
-def error_embed(title: str, description: str = "") -> discord.Embed:
-    # Title is the main error type, description is the detail
-    return create_embed(f"{EMOJI_CROSS} {title}", description, color=EMBED_COLOR_ERROR, timestamp=True)
+# Example: Modified definition to accept 'message' as a keyword argument
+def error_embed(*, message: str) -> discord.Embed: # '*' makes 'message' keyword-only
+    embed = discord.Embed(title="Error", description=message, color=discord.Color.red())
+    return embed
 
 def info_embed(title: str, description: str = "") -> discord.Embed:
     return create_embed(f"{EMOJI_INFO} {title}", description, color=EMBED_COLOR_INFO, timestamp=True)
