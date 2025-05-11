@@ -16,8 +16,8 @@ from .constants import (
     EMOJI_PLAYER, EMOJI_STATS_BASIC, EMOJI_STATS_ADVANCED,
     # Stats Data (Ensure these are defined in constants.py)
     STAT_DISPLAY_NAMES, PERCENTAGE_STATS,
-    TEAM_BASIC_STATS_PRIORITY, TEAM_ADVANCED_STATS_PRIORITY, # Assumed new constants for priority
-    TEAM_BASIC_STATS_OTHER, TEAM_ADVANCED_STATS_OTHER,     # Assumed new constants for others
+    TEAM_BASIC_STATS_PRIORITY, TEAM_ADVANCED_STATS_PRIORITY,
+    TEAM_BASIC_STATS_OTHER, TEAM_ADVANCED_STATS_OTHER,
     PLAYER_BASIC_STATS_PRIORITY, PLAYER_ADVANCED_STATS_PRIORITY,
     PLAYER_BASIC_STATS_OTHER, PLAYER_ADVANCED_STATS_OTHER
 )
@@ -75,14 +75,18 @@ def create_embed(
 # --- Specialized Embed Helpers ---
 def success_embed(title: str, description: str = "") -> discord.Embed:
     return create_embed(f"{EMOJI_CHECK} {title}", description, color=EMBED_COLOR_SUCCESS, timestamp=True)
-def warning_embed(title: str, description: str = "") -> discord.Embed:
+
+def warning_embed(title: str, description: str = "") -> discord.Embed: # Renamed from error_embed to avoid confusion
     return create_embed(f"{EMOJI_CROSS} {title}", description, color=EMBED_COLOR_ERROR, timestamp=True)
 
-# Overloaded error_embed to allow custom title
-def error_embed(description: str) -> discord.Embed:
-    """Creates an error embed with a default title."""
-    return create_embed(f"{EMOJI_CROSS} Error", description, color=EMBED_COLOR_ERROR, timestamp=True)
-# Overloaded error_embed to allow custom title
+# MODIFIED error_embed to accept an optional title
+def error_embed(description: str, *, title: Optional[str] = None) -> discord.Embed:
+    """
+    Creates an error embed. Allows an optional custom title.
+    If title is not provided, defaults to "Error".
+    """
+    final_title = title if title else f"{EMOJI_CROSS} Error"
+    return create_embed(final_title, description, color=EMBED_COLOR_ERROR, timestamp=True)
 
 def info_embed(title: str, description: str = "") -> discord.Embed:
     return create_embed(f"{EMOJI_INFO} {title}", description, color=EMBED_COLOR_INFO, timestamp=True)
@@ -99,7 +103,6 @@ def _can_add_to_embed(embed: discord.Embed, num_fields_to_add: int = 1,
     if len(embed.fields) + num_fields_to_add > MAX_EMBED_FIELDS:
         return False
     
-    # Approximate current length (title, desc, footer, author)
     current_length = len(embed.title or "") + len(embed.description or "") + \
                      len(embed.footer.text or "") + len(embed.author.name or "")
     for field in embed.fields:
@@ -113,17 +116,14 @@ def _can_add_to_embed(embed: discord.Embed, num_fields_to_add: int = 1,
 def add_stats_section_to_embed(
     embed: discord.Embed,
     section_title: str,
-    stats_to_display: List[str], # List of stat keys to fetch from data
-    data_source: Dict[str, Any], # The dictionary containing stat values
+    stats_to_display: List[str], 
+    data_source: Dict[str, Any], 
     inline_stats: bool = True,
-    section_emoji: str = "" # Optional emoji for the section title
+    section_emoji: str = "" 
 ) -> int:
     """
     Adds a section of stats to an embed, respecting field and character limits.
-    A section consists of a non-inline title field, followed by inline/non-inline stat fields.
-
-    Returns:
-        Number of actual stat value fields added (excluding the section title field).
+    Returns: Number of actual stat value fields added (excluding the section title field).
     """
     if not isinstance(data_source, dict) or not stats_to_display:
         return 0
@@ -133,13 +133,11 @@ def add_stats_section_to_embed(
 
     for stat_key in stats_to_display:
         raw_value = data_source.get(stat_key)
-        # pd.isna handles None, np.nan, pd.NA
         if raw_value is not None and not pd.isna(raw_value):
             display_name = STAT_DISPLAY_NAMES.get(stat_key, stat_key.replace('_', ' ').title())
-            is_percent = stat_key in PERCENTAGE_STATS # Pre-check for efficiency
+            is_percent = stat_key in PERCENTAGE_STATS 
             formatted_value = format_stat_value(stat_key, raw_value, is_percentage_stat=is_percent)
 
-            # Check individual field limits
             if len(display_name) > MAX_FIELD_NAME_LENGTH:
                 logger.warning(f"Stat name '{display_name}' too long, truncating.")
                 display_name = display_name[:MAX_FIELD_NAME_LENGTH-3] + "..."
@@ -151,15 +149,13 @@ def add_stats_section_to_embed(
             total_chars_for_stats += len(display_name) + len(formatted_value)
 
     if not stat_fields_to_add:
-        return 0 # No valid stats to add for this section
+        return 0 
 
-    # Check if we can add the section title field
     section_title_str = f"{section_emoji} **{section_title}**" if section_emoji else f"**{section_title}**"
-    if not _can_add_to_embed(embed, 1, name_len=0, value_len=len(section_title_str)): # Section title value is name
+    if not _can_add_to_embed(embed, 1, name_len=0, value_len=len(section_title_str)):
         logger.warning(f"Not enough space in embed for section title: '{section_title}'")
         return 0
     
-    # Add section title (as a field with empty name for non-inline appearance)
     embed.add_field(name="\u200b", value=section_title_str, inline=False)
     
     stats_added_this_section = 0
@@ -170,8 +166,7 @@ def add_stats_section_to_embed(
         else:
             logger.warning(f"Embed limit reached while adding stats for '{section_title}'. "
                            f"{len(stat_fields_to_add) - stats_added_this_section} stats truncated for this section.")
-            # Optionally add a truncation indicator if space allows FOR THAT indicator
-            if _can_add_to_embed(embed, 1, name_len=3, value_len=20): # For "..." : "More truncated..."
+            if _can_add_to_embed(embed, 1, name_len=3, value_len=20):
                  embed.add_field(name="...", value="More stats truncated", inline=inline_stats)
             break
             
@@ -179,14 +174,15 @@ def add_stats_section_to_embed(
 
 # --- Team Info Embed Formatter (Example of using add_stats_section) ---
 def format_team_profile_embed(
-    team_bio_data: Optional[Dict[str, Any]], # From CommonTeamInfo or similar
-    team_season_stats: Optional[Dict[str, Any]], # From LeagueDashTeamStats or similar
+    team_bio_data: Optional[Dict[str, Any]], 
+    team_season_stats: Optional[Dict[str, Any]], 
     team_logo_url: Optional[str]
 ) -> discord.Embed:
     """Formats combined team bio and season stats into an embed."""
 
     if not team_bio_data:
-        return error_embed("Team Data Error", "Essential team information is missing.")
+        # Using the MODIFIED error_embed
+        return error_embed(description="Essential team information is missing.", title="Team Data Error")
 
     team_name = team_bio_data.get('TEAM_NAME', team_bio_data.get('DISPLAY_NAME', 'Unknown Team'))
     team_city = team_bio_data.get('TEAM_CITY', '')
@@ -203,17 +199,15 @@ def format_team_profile_embed(
         record = f"{team_season_stats['W']}-{team_season_stats['L']}"
         description_parts.append(f"Record: {record}")
 
-
     embed = create_embed(
         title=f"{EMOJI_TEAMS} {full_team_name}",
         description=" | ".join(filter(None, description_parts)) or "Team Profile",
-        color=EMBED_COLOR_INFO, # Or team-specific color
+        color=EMBED_COLOR_INFO, 
         thumbnail_url=team_logo_url,
         timestamp=True
     )
 
     if team_season_stats and isinstance(team_season_stats, dict) and "error" not in team_season_stats:
-        # Assumes constants like TEAM_BASIC_STATS_PRIORITY are defined as lists of stat keys
         add_stats_section_to_embed(
             embed, "Key Season Stats", TEAM_BASIC_STATS_PRIORITY, team_season_stats,
             inline_stats=True, section_emoji=EMOJI_STATS_BASIC
@@ -222,7 +216,6 @@ def format_team_profile_embed(
             embed, "Key Advanced Stats", TEAM_ADVANCED_STATS_PRIORITY, team_season_stats,
             inline_stats=True, section_emoji=EMOJI_STATS_ADVANCED
         )
-        # Optionally add "Other" stats if space allows
         add_stats_section_to_embed(
             embed, "Other Basic Stats", TEAM_BASIC_STATS_OTHER, team_season_stats,
             inline_stats=True
@@ -239,22 +232,21 @@ def format_team_profile_embed(
     embed.set_footer(text="Data primarily from stats.nba.com")
     return embed
 
-
 # --- Player Info Embed Formatter (Example) ---
 def format_player_profile_embed(
-    player_bio_data: Optional[Dict[str, Any]], # From CommonPlayerInfo or augmented
-    player_season_stats: Optional[Dict[str, Any]], # From PlayerDashboard (Base + Advanced)
-    current_season_str: str # e.g., "2023-24"
+    player_bio_data: Optional[Dict[str, Any]], 
+    player_season_stats: Optional[Dict[str, Any]], 
+    current_season_str: str 
 ) -> discord.Embed:
     """Formats player bio and season stats into an embed."""
 
     if not player_bio_data:
-        return error_embed("Player Data Error", "Essential player information is missing.")
+        return error_embed(description="Essential player information is missing.", title="Player Data Error")
 
     full_name = player_bio_data.get('full_name', 'Unknown Player')
     team_full = player_bio_data.get('team_full_name', 'N/A')
     team_abbr = player_bio_data.get('team_abbreviation', '')
-    jersey = player_bio_data.get('JERSEY', '') # Already includes '#' if present
+    jersey = player_bio_data.get('JERSEY', '') 
     position = player_bio_data.get('POSITION', '')
     height = player_bio_data.get('HEIGHT', '')
     weight = player_bio_data.get('WEIGHT', '')
@@ -270,17 +262,15 @@ def format_player_profile_embed(
     if not description_str and team_full == 'N/A': description_str = "Free Agent or No Team Info"
     elif not description_str: description_str = "Bio details unavailable."
 
-
     embed = create_embed(
         title=f"{EMOJI_PLAYER} {title_str}",
         description=description_str,
-        color=EMBED_COLOR_INFO, # Or player-specific color scheme
+        color=EMBED_COLOR_INFO, 
         thumbnail_url=player_bio_data.get('headshot_url'),
         timestamp=True
     )
 
     if player_season_stats and isinstance(player_season_stats, dict) and "error" not in player_season_stats:
-        # Assumes constants like PLAYER_BASIC_STATS_PRIORITY are defined
         add_stats_section_to_embed(
             embed, f"Per Game Stats ({current_season_str})", PLAYER_BASIC_STATS_PRIORITY,
             player_season_stats, inline_stats=True, section_emoji=EMOJI_STATS_BASIC
@@ -289,7 +279,6 @@ def format_player_profile_embed(
             embed, f"Advanced Stats ({current_season_str})", PLAYER_ADVANCED_STATS_PRIORITY,
             player_season_stats, inline_stats=True, section_emoji=EMOJI_STATS_ADVANCED
         )
-        # Optionally add "Other" player stats if space allows
         add_stats_section_to_embed(
             embed, f"Other Basic Stats ({current_season_str})", PLAYER_BASIC_STATS_OTHER,
             player_season_stats, inline_stats=True
@@ -314,54 +303,50 @@ def format_player_profile_embed(
     
     if draft_info:
         if _can_add_to_embed(embed, 1, name_len=5, value_len=len(" | ".join(draft_info))):
-             embed.add_field(name="Draft", value=" | ".join(draft_info), inline=True) # Try inline if space
+             embed.add_field(name="Draft", value=" | ".join(draft_info), inline=True) 
     elif player_bio_data.get('DRAFT_YEAR') == 'Undrafted':
          if _can_add_to_embed(embed, 1, name_len=5, value_len=9):
              embed.add_field(name="Draft", value="Undrafted", inline=True)
 
-
     embed.set_footer(text="Data primarily from stats.nba.com")
     return embed
 
-# --- Standings Embed (Example: a more compact, less table-like version if preferred) ---
-# (The fixed-width table version you had is also good, just offering an alternative)
+# --- Standings Embed ---
 def format_standings_embed(standings_data: Optional[Dict[str, pd.DataFrame]]) -> discord.Embed:
     if not standings_data or not isinstance(standings_data, dict):
-        return error_embed("Standings Error", "Could not retrieve or process standings data.")
+        return error_embed(description="Could not retrieve or process standings data.", title="Standings Error")
 
     embed = create_embed(
         title=f"{EMOJI_TROPHY} NBA Season Standings",
         color=EMBED_COLOR_STANDINGS,
         timestamp=True
     )
-    embed.set_footer(text="Data from stats.nba.com | Clinch: x=Playoffs, pi=Play-In, e/w=Conf#, o=Elim.")
+    embed.set_footer(text="Data from stats.nba.com | Clinch: C=Playoffs, P=Play-In, D=Div/Conf, E=Elim.")
 
-    for conf_name_key, conf_df in standings_data.items(): # e.g., 'East', 'West'
+    for conf_name_key, conf_df in standings_data.items(): 
         if conf_df is None or conf_df.empty:
             embed.add_field(name=f"{conf_name_key} Conference", value="No data available.", inline=False)
             continue
 
-        # Sort by PlayoffRank or ConferenceRank
         rank_col = 'PlayoffRank' if 'PlayoffRank' in conf_df.columns else ('ConferenceRank' if 'ConferenceRank' in conf_df.columns else None)
         if rank_col:
             conf_df_sorted = conf_df.sort_values(by=rank_col)
         else:
-            conf_df_sorted = conf_df # Use as-is if no rank column
+            conf_df_sorted = conf_df 
 
         standings_str_parts = []
-        for index, row in conf_df_sorted.head(15).iterrows(): # Display top 15 per conference
+        for index, row in conf_df_sorted.head(15).iterrows(): 
             rank = row.get(rank_col, index + 1)
             team_name = row.get('TeamName', row.get('TEAM_NAME', 'N/A'))
             record = f"{row.get('WINS', row.get('W', '?'))}-{row.get('LOSSES', row.get('L', '?'))}"
             
-            # Clinch indicator mapping (simplified)
-            clinch_raw = str(row.get('ClinchIndicator', '')).strip()
+            clinch_raw = str(row.get('ClinchIndicator', '')).strip().lower() # Normalize to lower
             clinch_note = ""
             if clinch_raw:
-                if '-x' in clinch_raw or '-c' in clinch_raw : clinch_note = " (C)" # Clinched Playoffs
-                elif '-p' in clinch_raw : clinch_note = " (P)" # Clinched Play-In
-                elif '-e' in clinch_raw or '-w' in clinch_raw : clinch_note = " (D)" # Clinched Division/Conference (can be more specific)
-                elif '-o' in clinch_raw : clinch_note = " (E)" # Eliminated
+                if '-x' in clinch_raw or '-c' in clinch_raw : clinch_note = " (C)" 
+                elif '-p' in clinch_raw or '-pi' in clinch_raw: clinch_note = " (P)" # Added -pi for play-in
+                elif '-e' in clinch_raw or '-w' in clinch_raw : clinch_note = " (D)" 
+                elif '-o' in clinch_raw : clinch_note = " (E)" 
             
             line = f"`{int(rank):>2}.` {team_name} ({record}){clinch_note}"
             standings_str_parts.append(line)
@@ -369,21 +354,15 @@ def format_standings_embed(standings_data: Optional[Dict[str, pd.DataFrame]]) ->
         field_value = "\n".join(standings_str_parts)
         if not field_value: field_value = "No teams to display."
         
-        # Truncate if too long (shouldn't happen with head(15))
         if len(field_value) > MAX_FIELD_VALUE_LENGTH:
             field_value = field_value[:MAX_FIELD_VALUE_LENGTH-20] + "\n...more teams"
 
-        conf_display_name = f"{EMOJI_INFO} {conf_name_key} Conference" # Add emoji placeholder
+        # Using a generic conference emoji or define specific ones in constants
+        conf_display_name = f"{EMOJI_INFO} {conf_name_key.title()} Conference"
         if _can_add_to_embed(embed, 1, name_len=len(conf_display_name), value_len=len(field_value)):
-            embed.add_field(name=conf_display_name, value=field_value, inline=True) # Try inline
+            embed.add_field(name=conf_display_name, value=field_value, inline=True) 
         else:
             logger.warning(f"Could not add {conf_name_key} standings to embed due to size limits.")
-            break # Stop adding conferences if limit hit
+            break 
 
     return embed
-
-
-# Note: The other formatters (versus, today_games, teams_list, commands_list)
-# from your second block of code were largely okay. Integrate them here if this
-# is meant to be the single source of truth for embed_builder.py, ensuring they
-# also use the refined create_embed, constants, and limit checks where applicable.

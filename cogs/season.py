@@ -1,55 +1,66 @@
+# cogs/season.py
+
 from discord import app_commands, Interaction
 from discord.ext import commands
 import logging
-from helpers.nba_helper import get_season_standings
-# Assuming NBAStatsBot is your custom bot class defined elsewhere
-# If not, and you're just using commands.Bot, that's fine too.
-# from ..bot import NBAStatsBot # Example if bot.py is one level up
 
 # Correct import paths for your helper modules
-from helpers.nba_helper import get_season_standings
-from helpers.embed_builder import error_embed, format_standings_embed
+from helpers.nba_helper import get_season_standings # Assuming this is an async function
+from helpers.embed_builder import error_embed, format_standings_embed # error_embed now takes title and description
 
 logger = logging.getLogger(__name__)
+
+# For type hinting your bot instance if it's a custom class
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ..bot import NBAStatsBot # Adjust path as needed
+    # Adjust this path if your bot's main file is named differently or in a different location
+    # For example, if your main bot file is 'bot.py' in the parent directory:
+    from ..bot import NBAStatsBot
+    # If it's 'main.py' in the same directory as cogs (unlikely but possible structure):
+    # from main import NBAStatsBot
+
 
 class SeasonStandings(commands.Cog):
     """Cog for displaying NBA season standings."""
 
-    # Use string literal for forward reference if NBAStatsBot is defined in a file
-    # that might import this cog, to avoid circular imports.
-    # If get_season_standings and embed_builder don't need custom bot attributes,
-    # commands.Bot is perfectly fine.
-    def __init__(self, bot: 'NBAStatsBot'): # Or bot: commands.Bot
-        self.bot: 'NBAStatsBot' = bot       # Or self.bot: commands.Bot = bot
+    def __init__(self, bot: 'NBAStatsBot'): # Use the type hint
+        self.bot: 'NBAStatsBot' = bot
 
     @app_commands.command(name="season", description="Displays the current NBA season standings.")
-    async def season_standings_command(self, interaction: Interaction): # Renamed for clarity from just "season"
+    async def season_standings_command(self, interaction: Interaction):
         """Fetches and displays the current NBA season standings."""
-        await interaction.response.defer(ephemeral=False) # ephemeral=False is default but good to be explicit
+        await interaction.response.defer(ephemeral=False)
         logger.info(f"/season command invoked by {interaction.user} (ID: {interaction.user.id}) in guild {interaction.guild_id or 'DM'}")
 
         try:
-            # Assuming get_season_standings is an async function that handles its own API calls
-            standings_data = await get_season_standings()
+            # Get the current season from the bot's config
+            current_season_str = self.bot.config.get("CURRENT_SEASON")
+            if not current_season_str:
+                logger.error("CURRENT_SEASON not found in bot config.")
+                await interaction.followup.send(embed=error_embed(
+                    title="Configuration Error",
+                    description="The current season is not configured for the bot. Please contact an administrator."
+                ))
+                return
+
+            # Pass the current_season_str to get_season_standings
+            # Ensure get_season_standings is defined as an async function if it makes API calls
+            standings_data = await get_season_standings(season=current_season_str)
 
             if standings_data is None:
                 logger.warning("get_season_standings returned None. Sending error embed.")
                 await interaction.followup.send(embed=error_embed(
                     title="Data Retrieval Error",
-                    message="Could not retrieve the latest season standings at this time. Please try again later."
+                    description="Could not retrieve the latest season standings at this time. Please try again later."
                 ))
                 return
 
-            # format_season_standings_embed should ideally handle cases where standings_data might be malformed
             embed = format_standings_embed(standings_data)
-            if embed is None: # If embed builder itself can return None on error
-                logger.error("format_season_standings_embed returned None. This indicates an issue with embed generation.")
+            if embed is None: # Should ideally not happen if format_standings_embed returns an error_embed on failure
+                logger.error("format_standings_embed returned None. This indicates an issue with embed generation.")
                 await interaction.followup.send(embed=error_embed(
                     title="Display Error",
-                    message="Could not format the season standings for display. Please report this issue."
+                    description="Could not format the season standings for display. Please report this issue."
                 ))
                 return
 
@@ -61,10 +72,10 @@ class SeasonStandings(commands.Cog):
             # Send a generic error message to the user
             await interaction.followup.send(embed=error_embed(
                 title="Unexpected Error",
-                message="An unexpected error occurred while trying to fetch the season standings. The developers have been notified."
+                description="An unexpected error occurred while trying to fetch the season standings. The developers have been notified."
             ))
 
 # Standard setup function for cogs
-async def setup(bot: 'NBAStatsBot'): # Or bot: commands.Bot
+async def setup(bot: 'NBAStatsBot'): # Use the type hint
     await bot.add_cog(SeasonStandings(bot))
     logger.info("Cog 'SeasonStandings' loaded successfully.")

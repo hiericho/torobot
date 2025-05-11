@@ -22,7 +22,8 @@ from nba_api.stats.endpoints import (
     leaguedashplayerstats,
     playerdashboardbygeneralsplits # Key endpoint for player stats
 )
-
+from nba_api.stats.endpoints import leaguestandingsv3
+from requests.exceptions import ReadTimeout, ConnectionError, RequestException
 # Import constants using relative import
 from .constants import (
     NBA_API_TIMEOUT,
@@ -343,44 +344,130 @@ async def fetch_scoreboard_v2_data() -> Tuple[Optional[Dict[str, pd.DataFrame]],
         return None, "API error fetching today's scoreboard."
 
 
-async def get_season_standings(season: str, season_type: str = 'Regular Season') -> Tuple[Optional[Dict[str, pd.DataFrame]], Optional[str]]:
+DEFAULT_API_TIMEOUT = 30 # seconds
+
+
+async def get_season_standings(season: str, bot_config: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, pd.DataFrame]]:
     """
-    Fetches season standings using LeagueStandingsV3.
-    Returns {'East': east_df, 'West': west_df}, or (None, error_message).
+    Fetches and processes NBA season standings for a given season.
+
+    Args:
+        season (str): The NBA season identifier (e.g., "2023-24").
+        bot_config (Optional[Dict[str, Any]]): The bot's configuration dictionary,
+                                                used for API timeout if available.
+
+    Returns:
+        Optional[Dict[str, pd.DataFrame]]: A dictionary with keys "East" and "West"
+                                           mapping to DataFrames of standings, or None on failure.
     """
-    logger.info(f"ASYNC: Fetching league standings for Season: {season}, Type: {season_type}")
+    api_timeout = DEFAULT_API_TIMEOUT
+    if bot_config and isinstance(bot_config.get("API_TIMEOUT_SECONDS"), (int, float)):
+        api_timeout = bot_config.get("API_TIMEOUT_SECONDS")
+
+    logger.info(f"Fetching standings for season: {season} with timeout: {api_timeout}s")
+
     try:
-        def _blocking_fetch():
-            endpoint = leaguestandingsv3.LeagueStandingsV3(
-                season=season,
-                season_type=season_type,
-                timeout=NBA_API_TIMEOUT
-            )
-            dataframes = endpoint.get_data_frames()
-            if dataframes and isinstance(dataframes, list) and len(dataframes) > 0:
-                return dataframes[0]
+        # Initialize the endpoint
+        standings_endpoint = leaguestandingsv3.LeagueStandingsV3(
+            season=season,
+            # league_id_nullable='00', # Typically '00' for NBA, often not needed if season is specific
+            # season_type_nullable='Regular Season', # Usually defaults to Regular Season
+            timeout=api_timeout
+        )
+
+        # get_data_frames() is a blocking call, so run it in a separate thread
+        # The result is a list of DataFrames. For LeagueStandingsV3, it's usually one DataFrame.
+        dataframes_list = await asyncio.to_thread(standings_endpoint.get_data_frames)
+
+        if not dataframes_list:
+            logger.warning(f"No DataFrames returned from LeagueStandingsV3 API for season '{season}'.")
             return None
 
-        standings_df = await asyncio.to_thread(_blocking_fetch)
+        # The main standings data is typically the first DataFrame in the list
+        standings_df = dataframes_list[0]
 
-        if standings_df is None or not isinstance(standings_df, pd.DataFrame) or standings_df.empty:
-            logger.warning(f"LeagueStandingsV3 returned empty or invalid DataFrame for Season {season}, Type {season_type}.")
-            return None, f"No standings data available for {season} ({season_type})."
+        if standings_df.empty:
+            logger.warning(f"Standings DataFrame is empty for season '{season}'.")
+            return None
 
-        if 'Conference' not in standings_df.columns:
-            logger.error("Standings DataFrame from LeagueStandingsV3 is missing 'Conference' column.")
-            return None, "Standings data format error (missing Conference)."
+        logger.debug(f"Successfully fetched raw standings for season '{season}'. Shape: {standings_df.shape}")
+        logger.debug(f"Columns: {standings_df.columns.tolist()}")
+        # Log a sample of the data for inspection if needed during debugging
+        # logger.debug(f"Standings data sample:\n{standings_df.head().to_string()}")
 
-        east_df = standings_df[standings_df['Conference'].str.lower() == 'east'].copy()
-        west_df = standings_df[standings_df['Conference'].str.lower() == 'west'].copy()
+        # Ensure required columns exist for splitting by conference
+        required_cols = ['Conference', 'TeamCity', 'TeamName', 'WINS', 'LOSSES', 'PlayoffRank', 'ClinchIndicator'] # Add more as needed by format_standings_embed
+        missing_cols = [col for col in required_cols if col not in standings_df.columns]
+        if missing_cols:
+            logger.error(f"Missing required columns in standings data for season '{season}': {missing_cols}. Cannot process.")
+            return None
 
-        logger.info(f"Successfully fetched standings for {season}. East: {len(east_df)}, West: {len(west_df)}.")
-        return {'East': east_df, 'West': west_df}, None
+        # Create a combined team name if not present (some endpoints might have it as TeamCity + TeamName)
+        if 'TeamFullName' not in standings_df.columns: # Assuming 'TeamFullName' is desired
+             standings_df['TeamFullName'] = standings_df['TeamCity'] + ' ' + standings_df['TeamName']
 
+
+        # Split data by conference
+        # Normalize conference names for robust comparison (e.g., 'East', 'east')
+        standings_df['ConferenceLower'] = standings_df['Conference'].str.lower()
+        east_df = standings_df[standings_df['ConferenceLower'] == 'east'].copy()
+        west_df = standings_df[standings_df['ConferenceLower'] == 'west'].copy()
+
+        # Drop the temporary lowercased column
+        east_df = east_df.drop(columns=['ConferenceLower'], errors='ignore')
+        west_df = west_df.drop(columns=['ConferenceLower'], errors='ignore')
+
+
+        if east_df.empty and west_df.empty:
+            logger.warning(f"Both East and West conference DataFrames are empty after filtering for season '{season}'.")
+            # This might be valid for very old seasons or during an extreme lockout, but usually indicates an issue or no data.
+            return None # Or return an empty dict: {} if format_standings_embed can handle it.
+
+        # Prepare the final dictionary
+        processed_standings = {}
+        if not east_df.empty:
+            # Sort by PlayoffRank if you want them ordered correctly for display
+            east_df = east_df.sort_values(by='PlayoffRank', ascending=True)
+            processed_standings["East"] = east_df
+            logger.info(f"Processed East standings: {len(east_df)} teams for season '{season}'.")
+        else:
+            logger.warning(f"East conference data is empty for season '{season}'.")
+            # Optionally, add an empty DataFrame to signify no data for that conference:
+            # processed_standings["East"] = pd.DataFrame(columns=required_cols)
+
+
+        if not west_df.empty:
+            west_df = west_df.sort_values(by='PlayoffRank', ascending=True)
+            processed_standings["West"] = west_df
+            logger.info(f"Processed West standings: {len(west_df)} teams for season '{season}'.")
+        else:
+            logger.warning(f"West conference data is empty for season '{season}'.")
+            # processed_standings["West"] = pd.DataFrame(columns=required_cols)
+
+        if not processed_standings: # If both East and West were empty and not added
+            logger.error(f"Failed to populate any conference standings for season '{season}'.")
+            return None
+
+        return processed_standings
+
+    except ReadTimeout:
+        logger.error(f"API ReadTimeout while fetching standings for season '{season}'.")
+        return None
+    except ConnectionError:
+        logger.error(f"API ConnectionError while fetching standings for season '{season}'.")
+        return None
+    except RequestException as e: # Catches other requests-related errors
+        logger.error(f"API RequestException while fetching standings for season '{season}': {e}")
+        return None
+    except IndexError: # If dataframes_list[0] is accessed when dataframes_list is empty
+        logger.error(f"API returned an unexpected structure (IndexError) for standings, season '{season}'.")
+        return None
+    except KeyError as e: # If a required column is missing after the initial check (should be rare)
+        logger.error(f"Missing expected key '{e}' during standings data processing for season '{season}'.")
+        return None
     except Exception as e:
-        logger.exception(f"ASYNC: Error fetching league standings for Season {season}:", exc_info=True)
-        return None, f"API error fetching league standings for {season}."
-
+        logger.exception(f"An unexpected error occurred in get_season_standings for season '{season}':")
+        return None
 
 async def fetch_team_game_log(team_id: int, season: str, season_type: str = 'Regular Season', num_games: int = 5) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     """Fetches the game log for a team."""
