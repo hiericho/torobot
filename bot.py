@@ -91,18 +91,24 @@ class NBAStatsBot(commands.Bot):
         default_stream_url = self.config.get("DEFAULT_STREAMING_URL", "https://www.twitch.tv/yourchannel")
         self.status_list = [
             {"type": discord.ActivityType.watching, "name": "live scores with /today"},
-            {"type": discord.ActivityType.listening, "name": "for /commands"},
-            {"type": discord.ActivityType.playing, "name": "with /player stats"},
-            {"type": discord.ActivityType.watching, "name": "team performance via /team stats"},
+            {"type": discord.ActivityType.listening, "name": "to /commands"},
+            {"type": discord.ActivityType.playing, "name": "with /playerstats"},
+            {"type": discord.ActivityType.watching, "name": "team performance via /teamstats"},
             {"type": discord.ActivityType.playing, "name": "scouting /injuries"},
-            {"type": discord.ActivityType.watching, "name": "the game /schedule"},
-            {"type": discord.ActivityType.playing, "name": "with /machine learning predictions"},
-            {"type": discord.ActivityType.watching, "name": "the current /season progress"},
-            {"type": discord.ActivityType.watching, "name": "league /standings"},
+            {"type": discord.ActivityType.watching, "name": "the games /today"},
+            {"type": discord.ActivityType.playing, "name": "with /machine predictions"},
+            {"type": discord.ActivityType.playing, "name": "with /versus predictions"},
+            {"type": discord.ActivityType.watching, "name": "NBA highlights"},
+            {"type": discord.ActivityType.listening, "name": "to NBA podcasts"},
+            {"type": discord.ActivityType.playing, "name": "with /compare teams"},
+            {"type": discord.ActivityType.watching, "name": "NBA stats"},
+            {"type": discord.ActivityType.playing, "name": "with /player profile"},
+            {"type": discord.ActivityType.watching, "name": "/team roster"},
+            {"type": discord.ActivityType.watching, "name": "/season"},
             {"type": discord.ActivityType.streaming, "name": "NBA Action!", "url": default_stream_url},
-            {"type": discord.ActivityType.playing, "name": "NBA 2K"}, # Generic basketball status
+            {"type": discord.ActivityType.playing, "name": "NBA 2K25"}, # Generic basketball status
             {"type": discord.ActivityType.watching, "name": "Basketball Highlights"}, # Generic basketball status
-            {"type": discord.ActivityType.listening, "name": "to basketball podcasts"}, # Generic basketball status
+            {"type": discord.ActivityType.listening, "name": "to basketball podcasts"}, # Generic basketball status lol
         ]
         random.shuffle(self.status_list) # Shuffle once at startup for varied initial status
         self.current_status_index = 0
